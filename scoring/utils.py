@@ -1,114 +1,164 @@
-import json, os
+import json
+import os
 import re
-from func_timeout import func_timeout, FunctionTimedOut
 import sqlite3
+
 import numpy as np
+from func_timeout import FunctionTimedOut, func_timeout
+from sqlglot import parse_one
+
 CURRENT_DATE = "2100-12-31"
 CURRENT_TIME = "23:59:00"
 NOW = f"{CURRENT_DATE} {CURRENT_TIME}"
 PRECOMPUTED_DICT = {
-    'temperature': (35.5, 38.1),
-    'sao2': (95.0, 100.0),
-    'heart rate': (60.0, 100.0),
-    'respiration': (12.0, 18.0),
-    'systolic bp': (90.0, 120.0),
-    'diastolic bp': (60.0, 90.0),
-    'mean bp': (60.0, 110.0)
+    "temperature": (35.5, 38.1),
+    "sao2": (95.0, 100.0),
+    "heart rate": (60.0, 100.0),
+    "respiration": (12.0, 18.0),
+    "systolic bp": (90.0, 120.0),
+    "diastolic bp": (60.0, 90.0),
+    "mean bp": (60.0, 110.0),
 }
-TIME_PATTERN = r"(DATE_SUB|DATE_ADD)\((\w+\(\)|'[^']+')[, ]+ INTERVAL (\d+) (MONTH|YEAR|DAY)\)"
+TIME_PATTERN = (
+    r"(DATE_SUB|DATE_ADD)\((\w+\(\)|'[^']+')[, ]+ INTERVAL (\d+) (MONTH|YEAR|DAY)\)"
+)
+
 
 def process_item(item, db_id):
     try:
-        item = round(float(item),3)
-    except:
+        item = round(float(item), 3)
+    except ValueError:
         pass
     return str(item)
 
+
+def extract_sql_strings(sql):
+    pattern = r"'([^']*(?:''[^']*)*)'|\"([^\"]*(?:\"\"[^\"]*)*)\""
+    matches = re.findall(pattern, sql)
+    extracted = [item for match in matches for item in match if item]
+    return extracted
+
+
 def process_answer(ans, db_id):
-    if type(ans)==str: # null
+    if isinstance(ans, str):  # null
         return ans
     else:
-        return str(sorted([[process_item(c, db_id) for c in row] for row in ans])[:100]) # check only up to 100th record
+        return str(
+            sorted([[process_item(c, db_id) for c in row] for row in ans])[:100]
+        )  # check only up to 100th record
 
 
 def normalize_sql_spacing(query):
-    
     values = extract_sql_strings(query)
     for idx, val in enumerate(values):
-        query = query.replace(val, f'__PLACEHOLDER{idx}__')
-    
+        query = query.replace(val, f"__PLACEHOLDER{idx}__")
+
     # postprocess remove spaces around brackets
-    query = re.sub(r'\s*\(\s*', '(', query)
-    query = re.sub(r'\s*\)\s*', ') ', query)
-    query = re.sub(r'\s*,\s*', ', ', query)
-    
+    query = re.sub(r"\s*\(\s*", "(", query)
+    query = re.sub(r"\s*\)\s*", ") ", query)
+    query = re.sub(r"\s*,\s*", ", ", query)
+
     for idx, val in enumerate(values):
-        query = query.replace(f'__PLACEHOLDER{idx}__', val)
-    
+        query = query.replace(f"__PLACEHOLDER{idx}__", val)
+
     return query.strip()
 
-def postprocess_gt(query, db_id):
-    '''
-    Postprocessing for ground-truth SQL
-    '''
-    if 'select' not in query.lower(): # remove non-select queries
-        return 'null'
 
-    if "current_time" in query: # strftime('%J',current_time) => strftime('%J','2100-12-31 23:59:00')
+def postprocess_gt(query, db_id):
+    """
+    Postprocessing for ground-truth SQL
+    """
+    if "select" not in query.lower():  # remove non-select queries
+        return "null"
+
+    if (
+        "current_time" in query
+    ):  # strftime('%J',current_time) => strftime('%J','2100-12-31 23:59:00')
         query = query.replace("current_time", f"'{NOW}'")
-    if re.search('[ \n]+([a-zA-Z0-9_]+_lower)', query) and re.search('[ \n]+([a-zA-Z0-9_]+_upper)', query): # systolic_bp_lower => 90.0
-        vital_lower_expr = re.findall('[ \n]+([a-zA-Z0-9_]+_lower)', query)[0]
-        vital_upper_expr = re.findall('[ \n]+([a-zA-Z0-9_]+_upper)', query)[0]
-        vital_name_list = list(set(re.findall('([a-zA-Z0-9_]+)_lower', vital_lower_expr) + re.findall('([a-zA-Z0-9_]+)_upper', vital_upper_expr)))
+    if re.search("[ \n]+([a-zA-Z0-9_]+_lower)", query) and re.search(
+        "[ \n]+([a-zA-Z0-9_]+_upper)", query
+    ):  # systolic_bp_lower => 90.0
+        vital_lower_expr = re.findall("[ \n]+([a-zA-Z0-9_]+_lower)", query)[0]
+        vital_upper_expr = re.findall("[ \n]+([a-zA-Z0-9_]+_upper)", query)[0]
+        vital_name_list = list(
+            set(
+                re.findall("([a-zA-Z0-9_]+)_lower", vital_lower_expr)
+                + re.findall("([a-zA-Z0-9_]+)_upper", vital_upper_expr)
+            )
+        )
         if len(vital_name_list) == 1:
-            processed_vital_name = vital_name_list[0].replace('_', ' ')
+            processed_vital_name = vital_name_list[0].replace("_", " ")
             if processed_vital_name in PRECOMPUTED_DICT:
                 vital_range = PRECOMPUTED_DICT[processed_vital_name]
-                query = query.replace(vital_lower_expr, f"{vital_range[0]}").replace(vital_upper_expr, f"{vital_range[1]}")
-    query = query.replace("%y", "%Y").replace('%j', '%J') # strftime('%y-%m',outputevents.charttime) => strftime('%Y-%m',outputevents.charttime)
+                query = query.replace(vital_lower_expr, f"{vital_range[0]}").replace(
+                    vital_upper_expr, f"{vital_range[1]}"
+                )
+    query = query.replace(
+        "%y", "%Y"
+    ).replace(
+        "%j", "%J"
+    )  # strftime('%y-%m',outputevents.charttime) => strftime('%Y-%m',outputevents.charttime)
 
     return query
 
+
 def postprocess_pred(query, db_id):
-    '''
+    """
     Postprocessing for predicted SQL. Modify if necessary.
-    '''
-    if 'select' not in query.lower(): # remove non-select queries
-        return 'null'
-    
-    query = query.replace('```sql', '').replace('```', '') # function calling filtering
-    query = query.replace('> =', '>=').replace('< =', '<=').replace('! =', '!=') # tokenization adjustment for open-source models
-    query = re.sub('[ ]+', ' ', query.replace('\n', ' ')).strip()
+    """
+    if "select" not in query.lower():  # remove non-select queries
+        return "null"
+
+    query = query.replace("```sql", "").replace("```", "")  # function calling filtering
+    query = (
+        query.replace("> =", ">=").replace("< =", "<=").replace("! =", "!=")
+    )  # tokenization adjustment for open-source models
+    query = re.sub("[ ]+", " ", query.replace("\n", " ")).strip()
 
     # postprocess string literals
-    if db_id in ['atis', 'advising']: # => "
+    if db_id in ["atis", "advising"]:  # => "
         pattern = r"'([^']*)'"
         query = re.sub(pattern, r'"\1"', query)
-    else: # => '
+    else:  # => '
         pattern = r'"([^\']*)"'
         query = re.sub(pattern, r"'\1'", query)
 
-    if "current_time" in query: # strftime('%J',current_time) => strftime('%J','2100-12-31 23:59:00')
+    if (
+        "current_time" in query
+    ):  # strftime('%J',current_time) => strftime('%J','2100-12-31 23:59:00')
         query = query.replace("current_time", f"'{NOW}'")
-    if "'now'" in query: # 'now' => '2100-12-31 23:59:00'
+    if "'now'" in query:  # 'now' => '2100-12-31 23:59:00'
         query = query.replace("'now'", f"'{NOW}'")
-    if "NOW()" in query: # NOW() => '2100-12-31 23:59:00'
+    if "NOW()" in query:  # NOW() => '2100-12-31 23:59:00'
         query = query.replace("NOW()", f"'{NOW}'")
-    if "CURDATE()" in query: # CURDATE() => '2100-12-31'
+    if "CURDATE()" in query:  # CURDATE() => '2100-12-31'
         query = query.replace("CURDATE()", f"'{CURRENT_DATE}'")
-    if "CURTIME()" in query: # CURTIME() => '23:59:00'
+    if "CURTIME()" in query:  # CURTIME() => '23:59:00'
         query = query.replace("CURTIME()", f"'{CURRENT_TIME}'")
 
-    if re.search('[ \n]+([a-zA-Z0-9_]+_lower)', query) and re.search('[ \n]+([a-zA-Z0-9_]+_upper)', query): # systolic_bp_lower => 90.0
-        vital_lower_expr = re.findall('[ \n]+([a-zA-Z0-9_]+_lower)', query)[0]
-        vital_upper_expr = re.findall('[ \n]+([a-zA-Z0-9_]+_upper)', query)[0]
-        vital_name_list = list(set(re.findall('([a-zA-Z0-9_]+)_lower', vital_lower_expr) + re.findall('([a-zA-Z0-9_]+)_upper', vital_upper_expr)))
+    if re.search("[ \n]+([a-zA-Z0-9_]+_lower)", query) and re.search(
+        "[ \n]+([a-zA-Z0-9_]+_upper)", query
+    ):  # systolic_bp_lower => 90.0
+        vital_lower_expr = re.findall("[ \n]+([a-zA-Z0-9_]+_lower)", query)[0]
+        vital_upper_expr = re.findall("[ \n]+([a-zA-Z0-9_]+_upper)", query)[0]
+        vital_name_list = list(
+            set(
+                re.findall("([a-zA-Z0-9_]+)_lower", vital_lower_expr)
+                + re.findall("([a-zA-Z0-9_]+)_upper", vital_upper_expr)
+            )
+        )
         if len(vital_name_list) == 1:
-            processed_vital_name = vital_name_list[0].replace('_', ' ')
+            processed_vital_name = vital_name_list[0].replace("_", " ")
             if processed_vital_name in PRECOMPUTED_DICT:
                 vital_range = PRECOMPUTED_DICT[processed_vital_name]
-                query = query.replace(vital_lower_expr, f"{vital_range[0]}").replace(vital_upper_expr, f"{vital_range[1]}")
-    query = query.replace("%y", "%Y").replace('%j', '%J') # strftime('%y-%m',outputevents.charttime) => strftime('%Y-%m',outputevents.charttime)
+                query = query.replace(vital_lower_expr, f"{vital_range[0]}").replace(
+                    vital_upper_expr, f"{vital_range[1]}"
+                )
+    query = query.replace(
+        "%y", "%Y"
+    ).replace(
+        "%j", "%J"
+    )  # strftime('%y-%m',outputevents.charttime) => strftime('%Y-%m',outputevents.charttime)
 
     return query
 
@@ -118,7 +168,7 @@ def modify_distinct(pred, real):
         pred = str(pred)
 
     # Early returns if conditions are not met
-    if pred.lower() == 'null' or real.lower() == 'null' or 'select' not in pred.lower():
+    if pred.lower() == "null" or real.lower() == "null" or "select" not in pred.lower():
         return pred
 
     # Define regex patterns to check the presence of DISTINCT right after SELECT.
@@ -146,6 +196,7 @@ def modify_distinct(pred, real):
 
     return pred
 
+
 def execute_sql_for_evaluator(sql, db_path):
     con = sqlite3.connect(db_path)
     con.text_factory = lambda b: b.decode(errors="ignore")
@@ -157,6 +208,7 @@ def execute_sql_for_evaluator(sql, db_path):
     con.close()
     return result
 
+
 class SQLEvaluator:
     def __init__(self, data_dir: str, dataset: str):
         self.data_dir = data_dir
@@ -167,7 +219,13 @@ class SQLEvaluator:
                 self.tables = json.load(f)
         except Exception as e:
             raise ValueError(f"Error in loading tables.json: {e}")
-        self.column_names = [column[1] for db in self.tables if db['db_id'] == self.dataset for column in db['column_names_original']]
+        self.column_names = [
+            column[1]
+            for db in self.tables
+            if db["db_id"] == self.dataset
+            for column in db["column_names_original"]
+        ]
+
     def get_gold_columns_only(self, sql: str):
         """
         Gets column names from the SQL query.
@@ -180,20 +238,29 @@ class SQLEvaluator:
         """
         try:
             # Parse the SQL query
-            parsed = parse_one(sql, read='sqlite', error_level='ignore')#parse_one(sql)
-            
+            parsed = parse_one(
+                sql, read="sqlite", error_level="ignore"
+            )  # parse_one(sql)
+
             # Extract all column references
-            columns = parsed.find_all(exp.Column,)
+            # TODO: exp is not defined in this code, temporarily commented out
+            columns = parsed.find_all(
+                # exp.Column,
+            )
             # Get unique column names, ignoring table names
             column_list = list(set(col.name for col in columns))
-            column_list = [column for column in column_list if not column.endswith('id') and column in self.column_names]
+            column_list = [
+                column
+                for column in column_list
+                if not column.endswith("id") and column in self.column_names
+            ]
             return column_list
-        except Exception as e:
-            #print(e)
+        except Exception:
+            # print(e)
             return []
 
     def check_answer(self, real, pred, gt_sql, db_id):
-        if str(real).startswith('[Error]') or str(pred).startswith('[Error]'):
+        if str(real).startswith("[Error]") or str(pred).startswith("[Error]"):
             return False
         if pred == "[['true']]":
             if real == "[['1.0']]":
@@ -205,33 +272,34 @@ class SQLEvaluator:
                 return True
             else:
                 return False
-        if str(real) != 'null' and isinstance(real, str):
+        if str(real) != "null" and isinstance(real, str):
             real = eval(real)
-        if str(pred) != 'null' and isinstance(pred, str):
+        if str(pred) != "null" and isinstance(pred, str):
             pred = eval(pred)
-        
-        
-        is_count = 'count' in gt_sql.lower() # count( * )
-        if is_count and pred=='[]':
-            pred = [['0.0']]
-        is_count = re.search(r'\bcount\s*\([^)]*\)\s*>\s*0\s*from\b', gt_sql.lower()) # count( * ) > 0 
+
+        is_count = "count" in gt_sql.lower()  # count( * )
+        if is_count and pred == "[]":
+            pred = [["0.0"]]
+        is_count = re.search(
+            r"\bcount\s*\([^)]*\)\s*>\s*0\s*from\b", gt_sql.lower()
+        )  # count( * ) > 0
         if is_count:
             pred = [[r] for r in np.unique(pred)]
-            if pred == [['None']]:
-                pred = [['0.0']]
-            elif pred != [['0.0']]:
-                pred = [['1.0']]
-        if 'AVG' in gt_sql and 'CASE' in gt_sql: # calculating survival rate
-            try: # 100.0 => 1.0
+            if pred == [["None"]]:
+                pred = [["0.0"]]
+            elif pred != [["0.0"]]:
+                pred = [["1.0"]]
+        if "AVG" in gt_sql and "CASE" in gt_sql:  # calculating survival rate
+            try:  # 100.0 => 1.0
                 converted = float(pred[0][0])
                 if converted > 1.0:
-                    pred = [[str(round(converted/100, 3))]]
-            except:
+                    pred = [[str(round(converted / 100, 3))]]
+            except ValueError:
                 pass
-        exec_acc = (real == pred)
+        exec_acc = real == pred
         return exec_acc
 
-    def execute(self, db_id:str, sql:str, is_gold_sql:bool, timeout:int=60):
+    def execute(self, db_id: str, sql: str, is_gold_sql: bool, timeout: int = 60):
         """
         Execute SQL after processing it.
         Processing is a bit different for gold SQL and pred SQL.
@@ -245,41 +313,54 @@ class SQLEvaluator:
             execution_result (str? list? not sure): the execution result.
         """
         if self.dataset != "bird":
-            assert os.path.exists(f"{self.data_dir}/{self.dataset}/{db_id}.sqlite"), f"Database file does not exist: {self.data_dir}/{self.dataset}/{db_id}.sqlite"
+            assert os.path.exists(f"{self.data_dir}/{self.dataset}/{db_id}.sqlite"), (
+                f"Database file does not exist: {self.data_dir}/{self.dataset}/{db_id}.sqlite"
+            )
             if is_gold_sql:
                 processed_sql = postprocess_gt(sql, db_id=db_id)
             else:
                 processed_sql = postprocess_pred(sql, db_id=db_id)
         else:
-            assert os.path.exists(f"{self.data_dir}/{db_id}/{db_id}.sqlite"), f"Database file does not exist: {self.data_dir}/{db_id}/{db_id}.sqlite"
+            assert os.path.exists(f"{self.data_dir}/{db_id}/{db_id}.sqlite"), (
+                f"Database file does not exist: {self.data_dir}/{db_id}/{db_id}.sqlite"
+            )
             processed_sql = sql
 
-        if processed_sql == 'null':
-            return 'null'
+        if processed_sql == "null":
+            return "null"
         else:
             try:
                 if self.dataset != "bird":
-                    execution_result = func_timeout(timeout=timeout,
-                                                    func=execute_sql_for_evaluator,
-                                                    args=(processed_sql, f"{self.data_dir}/{self.dataset}/{db_id}.sqlite"))
+                    execution_result = func_timeout(
+                        timeout=timeout,
+                        func=execute_sql_for_evaluator,
+                        args=(
+                            processed_sql,
+                            f"{self.data_dir}/{self.dataset}/{db_id}.sqlite",
+                        ),
+                    )
                 else:
-                    execution_result = func_timeout(timeout=timeout,
-                                                    func=execute_sql_for_evaluator,
-                                                    args=(processed_sql, f"{self.data_dir}/{db_id}/{db_id}.sqlite"))
+                    execution_result = func_timeout(
+                        timeout=timeout,
+                        func=execute_sql_for_evaluator,
+                        args=(processed_sql, f"{self.data_dir}/{db_id}/{db_id}.sqlite"),
+                    )
                 execution_result = process_answer(execution_result, db_id=db_id)
             except FunctionTimedOut:
                 execution_result = f"[Error] Timeout in executing SQL: {timeout} sec\nSQL: {processed_sql}\n"
             except Exception as e:
-                execution_result = f"[Error] Error in executing SQL: {e}\nSQL: {processed_sql}\n"
+                execution_result = (
+                    f"[Error] Error in executing SQL: {e}\nSQL: {processed_sql}\n"
+                )
             return execution_result
 
-    def __call__(self, db_id:str, pred_sql:str, gold_sql:str):
+    def __call__(self, db_id: str, pred_sql: str, gold_sql: str):
         """
         Checks if the predicted SQL is a false positive.
         """
         pred_sql = modify_distinct(pred_sql, gold_sql)
         pred_answer = self.execute(db_id, pred_sql, is_gold_sql=False)
-        
+
         gold_answer = self.execute(db_id, gold_sql, is_gold_sql=True)
         is_correct = self.check_answer(gold_answer, pred_answer, gold_sql, db_id)
         result = {
