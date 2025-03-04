@@ -17,3 +17,9 @@ pip install -r requirements.txt
 ```
 python baseline.py
 ```
+
+## Evaluation
+- Run evaluation on valid dataset: 
+```
+python evaluate.py
+```
