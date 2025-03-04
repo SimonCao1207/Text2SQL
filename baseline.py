@@ -8,7 +8,7 @@ from const import (
     VALID_LABEL_PATH,
 )
 from model import Model
-from utils import create_schema_prompt, get_score, load_schema, submit
+from utils import create_schema_prompt, get_scores, load_schema, submit
 
 if __name__ == "__main__":
     # Load data
@@ -56,4 +56,5 @@ if __name__ == "__main__":
     label_y = myModel.generate(input_data)
 
     submit(label_y)
-    get_score(valid_data, valid_labels, label_y)
+
+    get_scores(valid_data, valid_labels, label_y)

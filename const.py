@@ -1,7 +1,7 @@
 import os
 
 # Student ID
-STUDENT_ID = "20254014"
+TEAM_ID = "12"
 
 # Directory paths for database, results and scoring program
 DB_ID = "mimic_iv"

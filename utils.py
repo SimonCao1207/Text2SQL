@@ -3,7 +3,7 @@ import os
 
 import pandas as pd
 
-from const import RESULT_DIR, STUDENT_ID
+from const import RESULT_DIR, TEAM_ID
 from scoring.scorer import Scorer
 
 
@@ -128,16 +128,17 @@ def save_api_key(open_ai_key):
         json.dump(json_data, file, indent=4)
 
 
+# Save the filtered predictions to a JSON file
 def submit(label):
-    # Save the filtered predictions to a JSON file
     os.makedirs(RESULT_DIR, exist_ok=True)
     SCORING_OUTPUT_DIR = os.path.join(
-        RESULT_DIR, f"{STUDENT_ID}.json"
+        RESULT_DIR, f"team_{TEAM_ID}.json"
     )  # The file to submit
     write_json(SCORING_OUTPUT_DIR, label)
 
 
-def get_score(data, gold_labels, predictions):
+# Get score to evaluate the performance the model
+def get_scores(data, gold_labels, predictions):
     scorer = Scorer(
         data=data, predictions=predictions, gold_labels=gold_labels, score_dir="results"
     )
