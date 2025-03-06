@@ -38,7 +38,12 @@ class Model:
         if not os.path.isfile(target_dir) or openai.api_key == "":
             raise Exception("Error: no API key file found.")
 
-    def ask_chatgpt(self, prompt, model="gpt-4o-mini", temperature=0.6):
+    def ask_chatgpt(
+        self,
+        prompt,
+        model="ft:gpt-4o-mini-2024-07-18:personal::B7xHlv2W",
+        temperature=0.6,
+    ):
         response = client.chat.completions.create(
             model=model, temperature=temperature, messages=prompt
         )

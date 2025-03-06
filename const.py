@@ -11,14 +11,16 @@ RESULT_DIR = "results"
 SCORING_DIR = "scoring"
 
 TABLES_PATH = os.path.join("database", "tables.json")
+DB_PATH = os.path.join("database", DB_ID, f"{DB_ID}.sqlite")  # Database path
 
 VALID_DATA_PATH = os.path.join(BASE_DATA_DIR, "valid_data.json")
 VALID_LABEL_PATH = os.path.join(BASE_DATA_DIR, "valid_label.json")
 
-# TRAIN_DATA_PATH = os.path.join(EHRSQL_DATA_DIR, "train", "data.json")
-# TRAIN_LABEL_PATH = os.path.join(BASE_DATA_DIR, "label", "label.json")
+TRAIN_DATA_PATH = os.path.join(EHRSQL_DATA_DIR, DB_ID, "train", "data.json")
+TRAIN_LABEL_PATH = os.path.join(EHRSQL_DATA_DIR, DB_ID, "train", "label.json")
 
-# VALID_DATA_PATH = os.path.join(EHRSQL_DATA_DIR, "valid", "data.json")
-# VALID_LABEL_PATH = os.path.join(BASE_DATA_DIR, "label", "label.json")
+# VALID_DATA_PATH = os.path.join(EHRSQL_DATA_DIR, DB_ID, "valid", "data.json")
+# VALID_LABEL_PATH = os.path.join(EHRSQL_DATA_DIR, DB_ID, "valid", "label.json")
 
-DB_PATH = os.path.join("database", DB_ID, f"{DB_ID}.sqlite")  # Database path
+# PROMPT
+SYSTEM_PROMPT = "Given the following SQL tables and SQL assumptions you must follow, your job is to write queries given a user’s request.\n IMPORTANT: If you think you cannot predict the SQL accurately, you must answer with 'null'."

@@ -3,6 +3,7 @@ import os
 
 from const import (
     DB_ID,
+    SYSTEM_PROMPT,
     TABLES_PATH,
     VALID_DATA_PATH,
     VALID_LABEL_PATH,
@@ -32,15 +33,12 @@ if __name__ == "__main__":
     myModel = Model()
     data = valid_data["data"]
 
-    # System prompt for chatGPT
-    system_msg = "Given the following SQL tables and SQL assumptions you must follow, your job is to write queries given a user’s request.\n IMPORTANT: If you think you cannot predict the SQL accurately, you must answer with 'null'."
-
     input_data = []
     for sample in data:
         sample_dict = {}
         sample_dict["id"] = sample["id"]
         conversation = [
-            {"role": "system", "content": system_msg + "\n\n" + table_prompt}
+            {"role": "system", "content": SYSTEM_PROMPT + "\n\n" + table_prompt}
         ]
 
         def user_question_wrapper(question):
