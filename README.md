@@ -18,6 +18,8 @@ pip install -r requirements.txt
 python baseline.py
 ```
 
+- Finetune basemodel gpt-4o mini on EHRSQL train dataset with `llm_finetune.ipynb`
+
 ## Evaluation
 - Run evaluation on valid dataset: 
 ```
