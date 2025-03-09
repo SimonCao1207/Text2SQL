@@ -19,6 +19,17 @@ def write_json(path, file):
         json.dump(file, f)
 
 
+def load_data(data_path, label_path, is_test=False):
+    with open(os.path.join(data_path), "r") as f:
+        data = json.load(f)
+    if not is_test and label_path is not None:
+        with open(os.path.join(label_path), "r") as f:
+            labels = json.load(f)
+    else:
+        labels = {}
+    return data, labels
+
+
 # This function loads and processes a database schema from a JSON file.
 def load_schema(DATASET_JSON):
     schema_df = pd.read_json(DATASET_JSON)
