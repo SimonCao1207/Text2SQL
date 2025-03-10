@@ -132,7 +132,7 @@ def create_schema_prompt(
 
 # Save your api key into json file
 def save_api_key(open_ai_key):
-    api_path = "sample_submission_chatgpt_api_key.json"
+    api_path = "/tmp/openai_api_key.json"
     json_data = {}
     json_data["key"] = open_ai_key
     with open(api_path, "w") as file:
