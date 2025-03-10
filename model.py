@@ -60,12 +60,15 @@ class Model:
             input_data: list of python dictionaries containing 'id' and 'input'
         Returns:
             labels: python dictionary containing sql prediction or 'null' values associated with ids
+            logprobs : python dictionary containing logprobs associated with ids
         """
 
         labels = {}
+        logprobs = {}
 
         for sample in tqdm(input_data):
             answer = self.ask_chatgpt(sample["input"])
-            labels[sample["id"]] = (post_process(answer[0]), answer[1])
+            labels[sample["id"]] = post_process(answer[0])
+            logprobs[sample["id"]] = answer[1]
 
-        return labels
+        return labels, logprobs

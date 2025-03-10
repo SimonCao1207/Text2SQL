@@ -1,16 +1,18 @@
+import pickle
+
 from const import (
     DB_ID,
+    EHR_VALID_DATA_PATH,
+    EHR_VALID_LABEL_PATH,
     SYSTEM_PROMPT,
     TABLES_PATH,
-    VALID_DATA_PATH,
-    VALID_LABEL_PATH,
 )
 from model import Model
 from utils import create_schema_prompt, get_scores, load_data, load_schema, submit
 
 if __name__ == "__main__":
     # Load data from valid dataset
-    valid_data, valid_labels = load_data(VALID_DATA_PATH, VALID_LABEL_PATH)
+    valid_data, valid_labels = load_data(EHR_VALID_DATA_PATH, EHR_VALID_LABEL_PATH)
 
     # Load SQL assumptions for MIMIC-IV
     assumptions = open("database/mimic_iv_assumption.txt", "r").read()
@@ -40,7 +42,10 @@ if __name__ == "__main__":
         input_data.append(sample_dict)
 
     # Generate answer(SQL) from chatGPT
-    label_y = myModel.generate(input_data)
+    label_y, logprobs = myModel.generate(input_data)
+
+    with open("log_probability_ehr_valid_data.pickle", "wb") as f:
+        pickle.dump(logprobs, f, pickle.HIGHEST_PROTOCOL)
 
     submit(label_y)
 
