@@ -2,17 +2,18 @@ import pickle
 
 from const import (
     DB_ID,
-    EHR_VALID_DATA_PATH,
-    EHR_VALID_LABEL_PATH,
+    EHR_TEST_DATA_PATH,
+    EHR_TEST_LABEL_PATH,
     SYSTEM_PROMPT,
     TABLES_PATH,
 )
 from model import Model
 from utils import create_schema_prompt, get_scores, load_data, load_schema, submit
 
-if __name__ == "__main__":
-    # Load data from valid dataset
-    valid_data, valid_labels = load_data(EHR_VALID_DATA_PATH, EHR_VALID_LABEL_PATH)
+
+def run_baseline():
+    # Load data from ehr test dataset
+    test_data, test_labels = load_data(EHR_TEST_DATA_PATH, EHR_TEST_LABEL_PATH)
 
     # Load SQL assumptions for MIMIC-IV
     assumptions = open("database/mimic_iv_assumption.txt", "r").read()
@@ -22,7 +23,7 @@ if __name__ == "__main__":
         DB_ID, db_schema, primary_key, foreign_key, assumptions
     )
     myModel = Model()
-    data = valid_data["data"]
+    data = test_data["data"]
 
     input_data = []
     for sample in data:
@@ -43,10 +44,17 @@ if __name__ == "__main__":
 
     # Generate answer(SQL) from chatGPT
     label_y, logprobs = myModel.generate(input_data)
+    return test_data, test_labels, label_y, logprobs
 
-    with open("log_probability_ehr_valid_data.pickle", "wb") as f:
+
+if __name__ == "__main__":
+    test_data, test_labels, label_y, logprobs = run_baseline()
+
+    # TODO: use logprobs logprobs to estimate confidence and decide whether to abstain.
+
+    with open("log_probability_ehr_test_data.pickle", "wb") as f:
         pickle.dump(logprobs, f, pickle.HIGHEST_PROTOCOL)
 
     submit(label_y)
 
-    get_scores(valid_data, valid_labels, label_y)
+    get_scores(test_data, test_labels, label_y)

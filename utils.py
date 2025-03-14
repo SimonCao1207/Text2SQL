@@ -132,6 +132,8 @@ def create_schema_prompt(
 
 # Save your api key into json file
 def save_api_key(open_ai_key):
+    if not os.path.exists("/tmp"):
+        os.makedirs("/tmp")
     api_path = "/tmp/openai_api_key.json"
     json_data = {}
     json_data["key"] = open_ai_key
