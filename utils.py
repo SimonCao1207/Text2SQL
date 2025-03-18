@@ -142,11 +142,13 @@ def save_api_key(open_ai_key):
 
 
 # Save the filtered predictions to a JSON file
-def submit(label):
+def submit(label, file_name=None):
     os.makedirs(RESULT_DIR, exist_ok=True)
-    SCORING_OUTPUT_DIR = os.path.join(
-        RESULT_DIR, f"team_{TEAM_ID}.json"
-    )  # The file to submit
+    if file_name and isinstance(file_name, str):
+        SCORING_OUTPUT_DIR = os.path.join(RESULT_DIR, file_name)
+    else:
+        SCORING_OUTPUT_DIR = os.path.join(RESULT_DIR, f"team_{TEAM_ID}.json")
+
     write_json(SCORING_OUTPUT_DIR, label)
 
 
