@@ -11,10 +11,7 @@ from model import Model
 from utils import create_schema_prompt, get_scores, load_data, load_schema, submit
 
 
-def run_baseline():
-    # Load data from ehr test dataset
-    test_data, test_labels = load_data(EHR_TEST_DATA_PATH, EHR_TEST_LABEL_PATH)
-
+def get_conversation():
     # Load SQL assumptions for MIMIC-IV
     assumptions = open("database/mimic_iv_assumption.txt", "r").read()
 
@@ -22,6 +19,23 @@ def run_baseline():
     table_prompt = create_schema_prompt(
         DB_ID, db_schema, primary_key, foreign_key, assumptions
     )
+    conversation = [
+        {"role": "system", "content": SYSTEM_PROMPT + "\n\n" + table_prompt}
+    ]
+
+    def user_question_wrapper(question):
+        return "\n\n" + f"""NLQ: \"{question}\"\nSQL: """
+
+    conversation.append(
+        {"role": "user", "content": user_question_wrapper(sample["question"])}
+    )
+    return conversation
+
+
+def run_baseline():
+    # Load data from ehr test dataset
+    test_data, test_labels = load_data(EHR_TEST_DATA_PATH, EHR_TEST_LABEL_PATH)
+
     myModel = Model()
     data = test_data["data"]
 
@@ -29,17 +43,7 @@ def run_baseline():
     for sample in data:
         sample_dict = {}
         sample_dict["id"] = sample["id"]
-        conversation = [
-            {"role": "system", "content": SYSTEM_PROMPT + "\n\n" + table_prompt}
-        ]
-
-        def user_question_wrapper(question):
-            return "\n\n" + f"""NLQ: \"{question}\"\nSQL: """
-
-        conversation.append(
-            {"role": "user", "content": user_question_wrapper(sample["question"])}
-        )
-        sample_dict["input"] = conversation
+        sample_dict["input"] = get_conversation()
         input_data.append(sample_dict)
 
     # Generate answer(SQL) from chatGPT
