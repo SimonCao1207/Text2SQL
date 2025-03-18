@@ -26,7 +26,7 @@ if __name__ == "__main__":
         if sim_score > 0.75:
             final_ret[str_id] = "null"  # Abstain
         else:
-            prompt = get_conversation()
+            prompt = get_conversation(question)
             answer, _ = myModel.ask_chatgpt(prompt)
             final_ret[str_id] = post_process(answer)
 

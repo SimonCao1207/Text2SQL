@@ -25,3 +25,7 @@ python baseline.py
 ```
 python evaluate.py
 ```
+
+## Current pipeline
+- See `run.py`
+![Process Diagram](assets/pipeline.svg)

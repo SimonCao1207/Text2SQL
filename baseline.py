@@ -11,7 +11,7 @@ from model import Model
 from utils import create_schema_prompt, get_scores, load_data, load_schema, submit
 
 
-def get_conversation():
+def get_conversation(question):
     # Load SQL assumptions for MIMIC-IV
     assumptions = open("database/mimic_iv_assumption.txt", "r").read()
 
@@ -26,9 +26,7 @@ def get_conversation():
     def user_question_wrapper(question):
         return "\n\n" + f"""NLQ: \"{question}\"\nSQL: """
 
-    conversation.append(
-        {"role": "user", "content": user_question_wrapper(sample["question"])}
-    )
+    conversation.append({"role": "user", "content": user_question_wrapper(question)})
     return conversation
 
 
@@ -43,7 +41,7 @@ def run_baseline():
     for sample in data:
         sample_dict = {}
         sample_dict["id"] = sample["id"]
-        sample_dict["input"] = get_conversation()
+        sample_dict["input"] = get_conversation(sample["question"])
         input_data.append(sample_dict)
 
     # Generate answer(SQL) from chatGPT
