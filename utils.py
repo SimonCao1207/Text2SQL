@@ -19,6 +19,17 @@ def write_json(path, file):
         json.dump(file, f)
 
 
+def load_data(data_path, label_path, is_test=False):
+    with open(os.path.join(data_path), "r") as f:
+        data = json.load(f)
+    if not is_test and label_path is not None:
+        with open(os.path.join(label_path), "r") as f:
+            labels = json.load(f)
+    else:
+        labels = {}
+    return data, labels
+
+
 # This function loads and processes a database schema from a JSON file.
 def load_schema(DATASET_JSON):
     schema_df = pd.read_json(DATASET_JSON)
@@ -121,7 +132,9 @@ def create_schema_prompt(
 
 # Save your api key into json file
 def save_api_key(open_ai_key):
-    api_path = "sample_submission_chatgpt_api_key.json"
+    if not os.path.exists("/tmp"):
+        os.makedirs("/tmp")
+    api_path = "/tmp/openai_api_key.json"
     json_data = {}
     json_data["key"] = open_ai_key
     with open(api_path, "w") as file:
@@ -129,11 +142,13 @@ def save_api_key(open_ai_key):
 
 
 # Save the filtered predictions to a JSON file
-def submit(label):
+def submit(label, file_name=None):
     os.makedirs(RESULT_DIR, exist_ok=True)
-    SCORING_OUTPUT_DIR = os.path.join(
-        RESULT_DIR, f"team_{TEAM_ID}.json"
-    )  # The file to submit
+    if file_name and isinstance(file_name, str):
+        SCORING_OUTPUT_DIR = os.path.join(RESULT_DIR, file_name)
+    else:
+        SCORING_OUTPUT_DIR = os.path.join(RESULT_DIR, f"team_{TEAM_ID}.json")
+
     write_json(SCORING_OUTPUT_DIR, label)
 
 

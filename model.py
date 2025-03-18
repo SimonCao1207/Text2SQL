@@ -28,9 +28,7 @@ class Model:
     def __init__(self):
         current_real_dir = os.getcwd()
         # current_real_dir = os.path.dirname(os.path.realpath(__file__))
-        target_dir = os.path.join(
-            current_real_dir, "sample_submission_chatgpt_api_key.json"
-        )
+        target_dir = os.path.join(current_real_dir, "/tmp/openai_api_key.json")
 
         if os.path.isfile(target_dir):
             with open(target_dir, "rb") as f:
@@ -45,9 +43,16 @@ class Model:
         temperature=0.6,
     ):
         response = client.chat.completions.create(
-            model=model, temperature=temperature, messages=prompt
+            model=model,
+            temperature=temperature,
+            messages=prompt,
+            logprobs=True,
+            top_logprobs=5,
         )
-        return response.choices[0].message.content
+        return (
+            response.choices[0].message.content,
+            response.choices[0].logprobs.content,  # type: ignore
+        )
 
     def generate(self, input_data):
         """
@@ -55,12 +60,15 @@ class Model:
             input_data: list of python dictionaries containing 'id' and 'input'
         Returns:
             labels: python dictionary containing sql prediction or 'null' values associated with ids
+            logprobs : python dictionary containing logprobs associated with ids
         """
 
         labels = {}
+        logprobs = {}
 
         for sample in tqdm(input_data):
             answer = self.ask_chatgpt(sample["input"])
-            labels[sample["id"]] = post_process(answer)
+            labels[sample["id"]] = post_process(answer[0])
+            logprobs[sample["id"]] = answer[1]
 
-        return labels
+        return labels, logprobs

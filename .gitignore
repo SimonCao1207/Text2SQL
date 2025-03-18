@@ -176,3 +176,8 @@ notebook
 # results
 results
 
+# Temporary files
+tmp
+
+# VS code debug/settings related file
+.vscode
