@@ -5,6 +5,7 @@ import re
 import openai
 from dotenv import load_dotenv
 from openai import OpenAI
+from opik import track
 from tqdm import tqdm
 
 from utils import save_api_key
@@ -36,6 +37,7 @@ class Model:
         if not os.path.isfile(target_dir) or openai.api_key == "":
             raise Exception("Error: no API key file found.")
 
+    @track
     def ask_chatgpt(
         self,
         prompt,
