@@ -5,6 +5,9 @@ from const import (
     NULL_QUESTION_DATA_PATH,
     NULL_QUESTION_INDEX_PATH,
     TEST_DATA_PATH,
+    TEXT_SQL_DATA_PATH,
+    TEXT_SQL_INDEX_PATH,
+    null_thres,
 )
 from model import Model, post_process
 from retrieve import Retriever, VectorDB
@@ -26,14 +29,15 @@ if __name__ == "__main__":
     null_vector_db = VectorDB(
         dataset_path=NULL_QUESTION_DATA_PATH, index_path=NULL_QUESTION_INDEX_PATH
     )
+    null_vector_db.initialize()
 
-    if not null_vector_db.index_path.exists():
-        null_vector_db.build_index()
-    else:
-        null_vector_db.load_index()
+    text_sql_vector_db = VectorDB(
+        dataset_path=TEXT_SQL_DATA_PATH, index_path=TEXT_SQL_INDEX_PATH
+    )
+    text_sql_vector_db.initialize()
 
     null_retriever = Retriever(null_vector_db)
-    thres = 0.4
+    text_sql_retriever = Retriever(text_sql_vector_db)
 
     myModel = Model()
     final_ret = {}
@@ -44,11 +48,12 @@ if __name__ == "__main__":
         results = null_retriever.retrieve(question)
         if results:
             most_similar_question, distance = results[0]
-            if distance <= thres:
+            if distance <= null_thres:
                 final_ret[str_id] = "null"  # Abstain
-        else:
-            prompt = get_conversation(question)
-            answer, _ = myModel.ask_chatgpt(prompt)
-            final_ret[str_id] = post_process(answer)
+            else:
+                few_shots = text_sql_retriever.retrieve(question)
+                prompt = get_conversation(question, few_shots)
+                answer, _ = myModel.ask_chatgpt(prompt)
+                final_ret[str_id] = post_process(answer)
 
     submit(final_ret)

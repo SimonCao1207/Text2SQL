@@ -22,8 +22,14 @@ class VectorDB:
         self.index_path = Path(index_path)
         self.model = SentenceTransformer(model_name)
         self.df = pd.read_csv(dataset_path)
-        self.questions = self.df["question"].tolist()
+        self.data_dict = self.df.to_dict(orient="records")
         self.index = None
+
+    def initialize(self):
+        if not self.index_path.exists():
+            self.build_index()
+        else:
+            self.load_index()
 
     def embed_text(self, query):
         return self.model.encode(query, convert_to_tensor=True)
@@ -32,13 +38,13 @@ class VectorDB:
         faiss.write_index(self.index, str(self.index_path))
 
     def load_index(self):
-        print("Loading index ...")
+        print(f"Loading index from {self.index_path}...")
         self.index = faiss.read_index(str(self.index_path))
 
     def build_index(self):
         embeddings = []
 
-        print("Buidling index ...")
+        print(f"Buidling index and save to {self.index_path} ...")
         # index all questions in the dataset and save the index
         for idx, row in tqdm(self.df.iterrows(), total=len(self.df)):
             question = row["question"]
@@ -69,7 +75,7 @@ class Retriever:
                 query_embedding, k=self.top_n
             )  # type: ignore
             results = [
-                (self.vector_db.questions[idx], distances[0][i])
+                (self.vector_db.data_dict[idx], distances[0][i])
                 for i, idx in enumerate(indices[0])
             ]
             return results
@@ -102,12 +108,12 @@ if __name__ == "__main__":
         str_id, question = item["id"], item["question"]
         results = retriever.retrieve(question)
         if results:
-            most_similar_question, distance = results[0]
+            most_similar_item, distance = results[0]
             if distance <= thres:
                 cnt += 1
                 print("===============")
                 print(question)
-                print(f"Most similar question: {most_similar_question}")
+                print(f"Most similar question: {most_similar_item['question']}")
                 print(f"Similarity score: {distance:.2f}")
 
     print(f"Total: {len(test_data['data'])}, Matched: {cnt}")

@@ -11,7 +11,15 @@ from model import Model
 from utils import create_schema_prompt, get_scores, load_data, load_schema, submit
 
 
-def get_conversation(question):
+def add_few_shots(prompt, few_shots):
+    most_similar_item, distance = few_shots[0]
+    question, sql = most_similar_item["question"], most_similar_item["sql"]
+    if distance <= text_sql_thres:
+        prompt += f"\n\nExample of your response:\nNLQ: {question}\nSQL: {sql}"
+    return prompt
+
+
+def get_conversation(question, few_shots=None):
     # Load SQL assumptions for MIMIC-IV
     assumptions = open("database/mimic_iv_assumption.txt", "r").read()
 
@@ -19,6 +27,10 @@ def get_conversation(question):
     table_prompt = create_schema_prompt(
         DB_ID, db_schema, primary_key, foreign_key, assumptions
     )
+    if few_shots:
+        table_prompt += add_few_shots(prompt=table_prompt, few_shots=few_shots)
+
+    # print(table_prompt)
     conversation = [
         {"role": "system", "content": SYSTEM_PROMPT + "\n\n" + table_prompt}
     ]
@@ -41,7 +53,7 @@ def run_baseline():
     for sample in data:
         sample_dict = {}
         sample_dict["id"] = sample["id"]
-        sample_dict["input"] = get_conversation(sample["question"])
+        sample_dict["input"] = get_conversation(sample["question"], few_shots=None)
         input_data.append(sample_dict)
 
     # Generate answer(SQL) from chatGPT
