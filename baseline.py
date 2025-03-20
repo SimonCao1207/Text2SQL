@@ -6,6 +6,7 @@ from const import (
     EHR_TEST_LABEL_PATH,
     SYSTEM_PROMPT,
     TABLES_PATH,
+    text_sql_thres,
 )
 from model import Model
 from utils import create_schema_prompt, get_scores, load_data, load_schema, submit
