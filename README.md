@@ -1,5 +1,18 @@
 # AI612-Project-1
 
+## Current pipeline
+```
+python run.py
+```
+- Abstain Stage
+
+![Process Diagram](assets/abstain_stage.svg)
+
+
+- Pipeline
+
+![Process Diagram](assets/RAG.svg)
+
 # Set up
 
 - Install `Ruff` extension on vscode for Python linter and code formatter
@@ -26,6 +39,3 @@ python baseline.py
 python evaluate.py
 ```
 
-## Current pipeline
-- See `run.py`
-![Process Diagram](assets/pipeline.svg)

@@ -181,3 +181,6 @@ tmp
 
 # VS code debug/settings related file
 .vscode
+
+# Index files
+data/index
