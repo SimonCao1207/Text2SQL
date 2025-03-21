@@ -120,13 +120,20 @@ def find_fields_MYSQL_like(db_schema, db_id):
 # Generates a comprehensive textual prompt describing the database schema, including tables, columns, and foreign key relationships.
 # Then, add the SQL assumptions for MIMIC-IV
 def create_schema_prompt(
-    db_id, db_schema, primary_key, foreign_key, assumptions, is_lower=True
+    db_id,
+    db_schema,
+    primary_key,
+    foreign_key,
+    assumptions,
+    is_lower=True,
+    add_assumptions=False,
 ):
     prompt = find_fields_MYSQL_like(db_schema, db_id)
     prompt += "Foreign_keys = " + find_foreign_keys_MYSQL_like(foreign_key, db_id)
     if is_lower:
         prompt = prompt.lower()
-    prompt += "\nSQL Assumptions that you must follow:\n" + assumptions
+    if add_assumptions:
+        prompt += "\nSQL Assumptions that you must follow:\n" + assumptions
     return prompt
 
 
