@@ -42,6 +42,7 @@ text_sql_thres = 0.2
 
 # PROMPT
 SYSTEM_PROMPT = "Given the following SQL tables and SQL assumptions you must follow, your job is to write queries given a user’s request.\n IMPORTANT: If you think you cannot predict the SQL accurately, you must answer with 'null'."
+PROMPT_CLASSIFICATION = "prompt_classification.md"
 
 RESERVED_WORDS = [
     "SELECT",
