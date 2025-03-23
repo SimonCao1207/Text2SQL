@@ -184,3 +184,6 @@ tmp
 
 # Index files
 data/index
+
+# Checkpoints
+outputs

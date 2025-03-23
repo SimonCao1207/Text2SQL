@@ -49,7 +49,7 @@ class VectorDB:
         for idx, row in tqdm(self.df.iterrows(), total=len(self.df)):
             question = row["question"]
             embedding = self.embed_text(question)
-            embeddings.append(embedding)
+            embeddings.append(embedding.cpu())
 
         embeddings = np.array(embeddings).astype("float32")
         self.index = faiss.IndexFlatL2(embeddings.shape[1])
