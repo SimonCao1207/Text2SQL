@@ -2,8 +2,19 @@ import json
 import os
 
 import pandas as pd
+import torch
+from peft.peft_model import PeftModel
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from const import RESULT_DIR, TEAM_ID
+from const import (
+    DB_ID,
+    LORA_PATH,
+    PRETRAINED_MODEL_PATH,
+    PROMPT_CLASSIFICATION,
+    RESULT_DIR,
+    TABLES_PATH,
+    TEAM_ID,
+)
 from scoring.scorer import Scorer
 
 
@@ -166,3 +177,49 @@ def get_scores(data, gold_labels, predictions):
     )
     print()
     print(scorer.get_scores())
+
+
+def get_tokenizer_model():
+    model = AutoModelForCausalLM.from_pretrained(
+        PRETRAINED_MODEL_PATH,
+    )
+    tokenizer = AutoTokenizer.from_pretrained(PRETRAINED_MODEL_PATH)
+    tokenizer.pad_token_id = tokenizer.eos_token_id
+    peft_model = PeftModel.from_pretrained(model, LORA_PATH).to("cuda")
+    return peft_model, tokenizer
+
+
+def get_tokenized_prompt(prompt, tokenizer):
+    prompt_tokenized = tokenizer.encode(prompt, add_special_tokens=True)
+    prompt_tokenized += tokenizer.encode("### Answer" + "\n", add_special_tokens=False)
+    prompt_tokenized = torch.Tensor(prompt_tokenized).long().view(1, -1)
+    return prompt_tokenized
+
+
+def get_classification_conversation(question):
+    prompt = open(PROMPT_CLASSIFICATION, "r").read()
+    db_schema, primary_key, foreign_key = load_schema(TABLES_PATH)
+    table_prompt = create_schema_prompt(
+        DB_ID, db_schema, primary_key, foreign_key, "", add_assumptions=False
+    )
+    question = prompt.format(user_question=question, table_metadata_string=table_prompt)
+    return question
+
+
+def generate_classification_answer(question, model, tokenizer):
+    prompt = get_classification_conversation(question)
+    prompt_tokenized = get_tokenized_prompt(prompt, tokenizer)
+    with torch.no_grad():
+        outputs = model.generate(
+            input_ids=prompt_tokenized.to("cuda"),
+            attention_mask=torch.ones_like(prompt_tokenized).to("cuda"),
+            max_new_tokens=10,
+            # do_sample=False,
+            # num_beams=5,
+            pad_token_id=tokenizer.eos_token_id,
+        )
+    answer = tokenizer.decode(
+        outputs[0][prompt_tokenized.shape[1] :],
+        skip_special_tokens=True,
+    )
+    return answer
