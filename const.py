@@ -44,6 +44,11 @@ text_sql_thres = 0.2
 SYSTEM_PROMPT = "Given the following SQL tables and SQL assumptions you must follow, your job is to write queries given a user’s request.\n IMPORTANT: If you think you cannot predict the SQL accurately, you must answer with 'null'."
 PROMPT_CLASSIFICATION = "prompt_classification.md"
 
+# Model paths
+PRETRAINED_MODEL_PATH = "defog/sqlcoder-7b-2"
+LORA_PATH = "outputs/second_run/checkpoint-4800"
+
+
 RESERVED_WORDS = [
     "SELECT",
     "AS",
