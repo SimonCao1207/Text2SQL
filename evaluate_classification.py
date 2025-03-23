@@ -30,7 +30,7 @@ def main(is_save="False"):
         prompt = f.read()
 
     db_schema, primary_key, foreign_key = load_schema(TABLES_PATH)
-    table_prompt = create_schema_prompt(DB_ID, db_schema, primary_key, foreign_key, "")
+    table_prompt = create_schema_prompt(DB_ID, db_schema, primary_key, foreign_key, "", add_assumptions=False)
 
     total = 0
     n_yes = 0

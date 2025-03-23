@@ -126,7 +126,7 @@ def create_schema_prompt(
     foreign_key,
     assumptions,
     is_lower=True,
-    add_assumptions=False,
+    add_assumptions=True,
 ):
     prompt = find_fields_MYSQL_like(db_schema, db_id)
     prompt += "Foreign_keys = " + find_foreign_keys_MYSQL_like(foreign_key, db_id)
