@@ -32,7 +32,7 @@ class VectorDB:
             self.load_index()
 
     def embed_text(self, query):
-        return self.model.encode(query, convert_to_tensor=True)
+        return self.model.encode(query, convert_to_tensor=True).cpu()
 
     def save_index(self):
         faiss.write_index(self.index, str(self.index_path))
@@ -49,7 +49,7 @@ class VectorDB:
         for idx, row in tqdm(self.df.iterrows(), total=len(self.df)):
             question = row["question"]
             embedding = self.embed_text(question)
-            embeddings.append(embedding.cpu())
+            embeddings.append(embedding)
 
         embeddings = np.array(embeddings).astype("float32")
         self.index = faiss.IndexFlatL2(embeddings.shape[1])
