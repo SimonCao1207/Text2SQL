@@ -40,7 +40,7 @@ if __name__ == "__main__":
     text_sql_retriever = Retriever(text_sql_vector_db)
 
     myModel = Model()
-    
+
     # classification model and tokenizer
     model, tokenizer = get_tokenizer_model()
     model.eval()
@@ -48,22 +48,26 @@ if __name__ == "__main__":
     final_ret = {}
     for sample in data:
         str_id, question = sample["id"], sample["question"]
+
         if is_short_question(question):
             final_ret[str_id] = "null"  # Abstain
+            continue
+
         results = null_retriever.retrieve(question)
         if results:
             most_similar_question, distance = results[0]
             if distance <= null_thres:
                 final_ret[str_id] = "null"  # Abstain
-            else:
-                answer = generate_classification_answer(question, model, tokenizer)
-                # if the answer is NO then abstain
-                if answer == "NO":
-                    final_ret[str_id] = "null"
-                else:
-                    few_shots = text_sql_retriever.retrieve(question)
-                    prompt = get_conversation(question, few_shots)
-                    answer, _ = myModel.ask_chatgpt(prompt)
-                    final_ret[str_id] = post_process(answer)
+                continue
+
+        answer = generate_classification_answer(question, model, tokenizer)
+        # if the answer is NO then abstain
+        if answer == "NO":
+            final_ret[str_id] = "null"
+        else:
+            few_shots = text_sql_retriever.retrieve(question)
+            prompt = get_conversation(question, few_shots)
+            answer, _ = myModel.ask_chatgpt(prompt)
+            final_ret[str_id] = post_process(answer)
 
     submit(final_ret)
