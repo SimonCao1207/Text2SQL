@@ -54,10 +54,10 @@ tzdata==2025.1
 urllib3==2.3.0
 wcwidth==0.2.13
 sqlglot==26.8.0
-sklearn==1.6.1
 torch==2.6.0
 transformers==4.49.0
 sentencepiece==0.2.0
 sentence-transformers==3.4.1
 faiss-cpu==1.10.0
 opik==1.6.6
+peft==0.15.0
