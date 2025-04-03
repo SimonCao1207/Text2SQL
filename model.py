@@ -8,6 +8,7 @@ from openai import OpenAI
 from opik import track
 from tqdm import tqdm
 
+from const import FINETUNED_GPT
 from utils import save_api_key
 
 load_dotenv()
@@ -26,7 +27,8 @@ def post_process(answer):
 
 
 class Model:
-    def __init__(self):
+    def __init__(self, model=FINETUNED_GPT):
+        self.model = model
         current_real_dir = os.getcwd()
         # current_real_dir = os.path.dirname(os.path.realpath(__file__))
         target_dir = os.path.join(current_real_dir, "/tmp/openai_api_key.json")
@@ -41,11 +43,10 @@ class Model:
     def ask_chatgpt(
         self,
         prompt,
-        model="ft:gpt-4o-mini-2024-07-18:personal::B7xHlv2W",
         temperature=0.6,
     ):
         response = client.chat.completions.create(
-            model=model,
+            model=self.model,
             temperature=temperature,
             messages=prompt,
             logprobs=True,
