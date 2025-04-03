@@ -51,7 +51,8 @@ class VectorDB:
             embedding = self.embed_text(question)
             embeddings.append(embedding)
 
-        embeddings = np.array(embeddings).astype("float32")
+        embeddings = np.array(embeddings, dtype=np.float32)
+        faiss.normalize_L2(embeddings)
         self.index = faiss.IndexFlatL2(embeddings.shape[1])
         self.index.add(embeddings)  # type: ignore
         self.save_index()
@@ -67,9 +68,10 @@ class Retriever:
         Given a user input, relevant splits are retrieved from storage using a Retriever.
         """
 
-        query_embedding = np.array([self.vector_db.embed_text(question)]).astype(
-            "float32"
+        query_embedding = np.array(
+            [self.vector_db.embed_text(question)], dtype=np.float32
         )
+        faiss.normalize_L2(query_embedding)
         if self.vector_db.index:
             distances, indices = self.vector_db.index.search(
                 query_embedding, k=self.top_n
@@ -112,7 +114,7 @@ if __name__ == "__main__":
             if distance <= thres:
                 cnt += 1
                 print("===============")
-                print(question)
+                print(f"Question : {question}")
                 print(f"Most similar question: {most_similar_item['question']}")
                 print(f"Similarity score: {distance:.2f}")
 
