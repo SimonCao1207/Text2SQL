@@ -38,10 +38,9 @@ TEXT_SQL_INDEX_PATH = os.path.join(BASE_DATA_DIR, "index/text_sql.index")
 
 # Threshold constant
 null_thres = 0.4
-text_sql_thres = 0.2
 
 # PROMPT
-SYSTEM_PROMPT = "Given the following SQL tables and SQL assumptions you must follow, your job is to write queries given a user’s request.\n IMPORTANT: If you think you cannot predict the SQL accurately, you must answer with 'null'."
+SYSTEM_PROMPT = "Given the following SQL tables and SQL assumptions you must follow, your job is to write queries given a user's request.\n You will first be shown examples of natural language questions (NLQs) alongside their corresponding SQL queries. At the end, you will be presented with one final question. Generate the SQL query for this final question only. IMPORTANT: If you think you cannot predict the SQL accurately, you must answer with 'null'."
 PROMPT_CLASSIFICATION = "prompt_classification.md"
 
 # Model paths
@@ -50,74 +49,5 @@ LORA_PATH = "outputs/second_run/checkpoint-4800"
 
 # Model name
 FINETUNED_GPT_MINI = "ft:gpt-4o-mini-2024-07-18:personal::B7xHlv2W"
-REASONING_GPT = "o3-mini"
+O3_MINI_GPT = "o3-mini"
 GPT_4o = "gpt-4o"
-
-
-RESERVED_WORDS = [
-    "SELECT",
-    "AS",
-    "IN",
-    "COUNT",
-    "FROM",
-    "WHERE",
-    "AND",
-    "OR",
-    "INSERT",
-    "UPDATE",
-    "DELETE",
-    "CREATE",
-    "DROP",
-    "ALTER",
-    "JOIN",
-    "ON",
-    "GROUP",
-    "ORDER",
-    "HAVING",
-    "LIMIT",
-    "UNION",
-    "DISTINCT",
-    "INDEX",
-    "TABLE",
-    "VIEW",
-    "TRIGGER",
-    "PRIMARY KEY",
-    "FOREIGN KEY",
-    "NULL",
-    "NOT NULL",
-    "UNIQUE",
-    "CHECK",
-    "DEFAULT",
-    "INDEX",
-    "SEQUENCE",
-    "EXEC",
-    "LIKE",
-    "BETWEEN",
-    "EXISTS",
-    "CASE",
-    "WHEN",
-    "THEN",
-    "ELSE",
-    "END",
-    "CAST",
-    "CHAR",
-    "VARCHAR",
-    "BOOLEAN",
-    "INTEGER",
-    "DATE",
-    "INTERVAL",
-    "TIME",
-    "TIMESTAMP",
-    "YEAR",
-    "MONTH",
-    "DAY",
-    "HOUR",
-    "MINUTE",
-    "SECOND",
-    "ZONE",
-    "CURRENT_DATE",
-    "CURRENT_TIME",
-    "CURRENT_TIMESTAMP",
-    "TRUE",
-    "FALSE",
-]

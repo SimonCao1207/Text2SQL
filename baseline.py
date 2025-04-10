@@ -6,17 +6,19 @@ from const import (
     EHR_TEST_LABEL_PATH,
     SYSTEM_PROMPT,
     TABLES_PATH,
-    text_sql_thres,
 )
 from model import Model
 from utils import create_schema_prompt, get_scores, load_data, load_schema, submit
 
 
 def add_few_shots(prompt, few_shots):
-    most_similar_item, distance = few_shots[0]
-    question, sql = most_similar_item["question"], most_similar_item["sql"]
-    if distance <= text_sql_thres:
-        prompt += f"\n\nExample of your response:\nNLQ: {question}\nSQL: {sql}"
+    prompt += (
+        "\n\n" + "### Examples of questions (NLQ) and their corresponding SQL queries\n"
+    )
+    for item in few_shots:
+        dct, _ = item
+        question, sql = dct["question"], dct["sql"]
+        prompt += f"\nNLQ: {question}\nSQL: {sql}\n"
     return prompt
 
 

@@ -5,7 +5,7 @@ from const import (
     FINETUNED_GPT_MINI,
     NULL_QUESTION_DATA_PATH,
     NULL_QUESTION_INDEX_PATH,
-    REASONING_GPT,
+    O3_MINI_GPT,
     TEST_DATA_PATH,
     TEXT_SQL_DATA_PATH,
     TEXT_SQL_INDEX_PATH,
@@ -34,8 +34,10 @@ def error_handling(answer, model, prompt, max_attempt=3):
     return "null"
 
 
-def initialize_vector_db(dataset_path, index_path):
-    vector_db = VectorDB(dataset_path=dataset_path, index_path=index_path)
+def initialize_vector_db(dataset_path, index_path, model_name):
+    vector_db = VectorDB(
+        dataset_path=dataset_path, index_path=index_path, model_name=model_name
+    )
     vector_db.initialize()
     return vector_db
 
@@ -48,17 +50,21 @@ if __name__ == "__main__":
         os.makedirs("./data/index")
 
     null_vector_db = initialize_vector_db(
-        dataset_path=NULL_QUESTION_DATA_PATH, index_path=NULL_QUESTION_INDEX_PATH
+        dataset_path=NULL_QUESTION_DATA_PATH,
+        index_path=NULL_QUESTION_INDEX_PATH,
+        model_name="all-MiniLM-L6-v2",
     )
     text_sql_vector_db = initialize_vector_db(
-        dataset_path=TEXT_SQL_DATA_PATH, index_path=TEXT_SQL_INDEX_PATH
+        dataset_path=TEXT_SQL_DATA_PATH,
+        index_path=TEXT_SQL_INDEX_PATH,
+        model_name="emilyalsentzer/Bio_ClinicalBERT",
     )
     null_retriever = Retriever(null_vector_db)
     text_sql_retriever = Retriever(text_sql_vector_db)
 
     gpt_mini_model = Model(model=FINETUNED_GPT_MINI)
     gpt_model = Model(model=GPT_4o)
-    reasoning_model = Model(model=REASONING_GPT)
+    reasoning_model = Model(model=O3_MINI_GPT)
 
     # classification model and tokenizer
     model, tokenizer = get_tokenizer_model()
@@ -78,7 +84,6 @@ if __name__ == "__main__":
             if distance <= null_thres:
                 final_ret[str_id] = "null"  # Abstain
                 continue
-
         answer = generate_classification_answer(question, model, tokenizer)
         # if the answer is NO then abstain
         if answer == "NO":

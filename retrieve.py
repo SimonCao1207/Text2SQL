@@ -4,8 +4,9 @@ from pathlib import Path
 import faiss
 import numpy as np
 import pandas as pd
+from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
-from transformers import AutoModel
+from transformers import AutoModel, AutoTokenizer
 
 from const import TEST_DATA_PATH
 from utils import load_data
@@ -16,11 +17,16 @@ class VectorDB:
         self,
         dataset_path,
         index_path="./data/default.index",
-        model_name="emilyalsentzer/Bio_ClinicalBERT",
+        model_name="all-MiniLM-L6-v2",
     ):
         self.dataset_path = dataset_path
         self.index_path = Path(index_path)
-        self.model = AutoModel.from_pretrained(model_name)
+        self.model_name = model_name
+        if model_name == "emilyalsentzer/Bio_ClinicalBERT":
+            self.model = AutoModel.from_pretrained(model_name)
+            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        else:
+            self.model = SentenceTransformer(model_name)
         self.df = pd.read_csv(dataset_path)
         self.data_dict = self.df.to_dict(orient="records")
         self.index = None
@@ -32,7 +38,12 @@ class VectorDB:
             self.load_index()
 
     def embed_text(self, query):
-        return self.model.encode(query, convert_to_tensor=True).cpu()
+        if self.model_name == "all-MiniLM-L6-v2":
+            return self.model.encode(query, convert_to_tensor=True).cpu()
+        inputs = self.tokenizer(query, return_tensors="pt")
+        outputs = self.model(**inputs)
+        embedding = outputs.last_hidden_state.mean(dim=1).squeeze()
+        return embedding.detach().numpy()
 
     def save_index(self):
         faiss.write_index(self.index, str(self.index_path))
@@ -94,7 +105,10 @@ if __name__ == "__main__":
 
     test_data, _ = load_data(TEST_DATA_PATH, None, is_test=True)
     vector_db = VectorDB(
-        dataset_path=dataset_path, index_path="./data/index/text_sql.index"
+        dataset_path=dataset_path,
+        index_path="./data/index/text_sql.index",
+        # index_path="./data/index/ehr_null.index",
+        # model_name="emilyalsentzer/Bio_ClinicalBERT",
     )
 
     if not vector_db.index_path.exists():
@@ -106,16 +120,21 @@ if __name__ == "__main__":
 
     thres = 0.4
     cnt = 0
+    tmp = 0
     for item in test_data["data"]:
         str_id, question = item["id"], item["question"]
         results = retriever.retrieve(question)
+        print("===============")
+        print(f"Question : {question}")
         if results:
-            most_similar_item, distance = results[0]
-            if distance <= thres:
-                cnt += 1
-                print("===============")
-                print(f"Question : {question}")
-                print(f"Most similar question: {most_similar_item['question']}")
-                print(f"Similarity score: {distance:.2f}")
+            old_cnt = cnt
+            for i in range(len(results)):
+                item, distance = results[i]
+                if distance <= thres:
+                    cnt += 1
+                    print(f"Similarity score ({distance:.2f}): {item['question']}")
+            if old_cnt != cnt:
+                tmp += 1
 
-    print(f"Total: {len(test_data['data'])}, Matched: {cnt}")
+    print(f"Total: {len(test_data['data'])}, Matched: {tmp}")
+    print(f"Number of examples: {cnt}")
