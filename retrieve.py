@@ -4,8 +4,8 @@ from pathlib import Path
 import faiss
 import numpy as np
 import pandas as pd
-from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
+from transformers import AutoModel
 
 from const import TEST_DATA_PATH
 from utils import load_data
@@ -16,11 +16,11 @@ class VectorDB:
         self,
         dataset_path,
         index_path="./data/default.index",
-        model_name="all-MiniLM-L6-v2",
+        model_name="emilyalsentzer/Bio_ClinicalBERT",
     ):
         self.dataset_path = dataset_path
         self.index_path = Path(index_path)
-        self.model = SentenceTransformer(model_name)
+        self.model = AutoModel.from_pretrained(model_name)
         self.df = pd.read_csv(dataset_path)
         self.data_dict = self.df.to_dict(orient="records")
         self.index = None
