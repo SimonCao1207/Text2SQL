@@ -12,7 +12,7 @@ from const import (
     GPT_4o,
     null_thres,
 )
-from filter_data import is_error
+from filter_data import is_empty, is_error
 from model import Model, post_process
 from retrieve import Retriever, VectorDB
 from utils import generate_classification_answer, get_tokenizer_model, load_data, submit
@@ -94,9 +94,10 @@ if __name__ == "__main__":
             answer, _ = gpt_model.ask_chatgpt(prompt)
 
             # Handle errors and post-process the answer
+            answer = post_process(answer)
+            if is_empty(answer):
+                final_ret[str_id] = "null"
             final_answer = error_handling(answer, reasoning_model, prompt)
-            if final_answer != "null":
-                final_answer = post_process(final_answer)
             final_ret[str_id] = final_answer
 
     submit(final_ret)

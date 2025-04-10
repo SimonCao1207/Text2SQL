@@ -47,3 +47,8 @@ def is_error(sql):
     result = execute("mimic_iv", sql, False, timeout=60)
     match = re.search(r"\[Error\]", result)
     return match
+
+
+def is_empty(sql):
+    result = execute("mimic_iv", sql, False, timeout=60)
+    return result == "[]" or result == ""
