@@ -2,13 +2,14 @@ import os  # Add this import
 
 from baseline import get_conversation
 from const import (
-    FINETUNED_GPT,
+    FINETUNED_GPT_MINI,
     NULL_QUESTION_DATA_PATH,
     NULL_QUESTION_INDEX_PATH,
     REASONING_GPT,
     TEST_DATA_PATH,
     TEXT_SQL_DATA_PATH,
     TEXT_SQL_INDEX_PATH,
+    GPT_4o,
     null_thres,
 )
 from filter_data import is_error
@@ -55,7 +56,8 @@ if __name__ == "__main__":
     null_retriever = Retriever(null_vector_db)
     text_sql_retriever = Retriever(text_sql_vector_db)
 
-    gpt_model = Model(model=FINETUNED_GPT)
+    gpt_mini_model = Model(model=FINETUNED_GPT_MINI)
+    gpt_model = Model(model=GPT_4o)
     reasoning_model = Model(model=REASONING_GPT)
 
     # classification model and tokenizer

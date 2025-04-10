@@ -49,8 +49,9 @@ PRETRAINED_MODEL_PATH = "defog/sqlcoder-7b-2"
 LORA_PATH = "outputs/second_run/checkpoint-4800"
 
 # Model name
-FINETUNED_GPT = "ft:gpt-4o-mini-2024-07-18:personal::B7xHlv2W"
+FINETUNED_GPT_MINI = "ft:gpt-4o-mini-2024-07-18:personal::B7xHlv2W"
 REASONING_GPT = "o3-mini"
+GPT_4o = "gpt-4o"
 
 
 RESERVED_WORDS = [
