@@ -1,8 +1,9 @@
 import json
 import logging
-import os  # Add this import
+import os
 import time
 
+import colorlog
 from tqdm import tqdm
 
 from baseline import get_conversation
@@ -26,9 +27,27 @@ from utils import generate_classification_answer, get_tokenizer_model, load_data
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[logging.FileHandler("process.log"), logging.StreamHandler()],
+    handlers=[
+        logging.FileHandler("process.log")
+    ],  # File handler doesn't support colors
+)
+
+# Add color to console output
+handler = colorlog.StreamHandler()
+handler.setFormatter(
+    colorlog.ColoredFormatter(
+        "%(log_color)s%(asctime)s - %(levelname)s - %(message)s",
+        log_colors={
+            "DEBUG": "cyan",
+            "INFO": "green",
+            "WARNING": "yellow",
+            "ERROR": "red",
+            "CRITICAL": "red,bg_white",
+        },
+    )
 )
 logger = logging.getLogger(__name__)
+logger.addHandler(handler)
 
 
 def save_checkpoint(data, iteration):
@@ -124,29 +143,25 @@ if __name__ == "__main__":
 
         if is_short_question(question):
             final_ret[str_id] = "null"  # Abstain
-            logger.info(f"Sample {str_id}: Short question detected, abstaining")
+            logger.warning(f"Sample {str_id}: Short question detected, abstaining")
             num_short_questions += 1
             continue
 
         results = null_retriever.retrieve(question)
         if results:
             most_similar_question, distance = results[0]
-            logger.info(
-                f"Sample {str_id}: Similar null question found, distance: {distance}"
-            )
             if distance <= null_thres:
                 final_ret[str_id] = "null"  # Abstain
-                logger.info(f"Sample {str_id}: Distance below threshold, abstaining")
+                logger.warning(f"Sample {str_id}: Distance below threshold, abstaining")
                 num_abstain_by_null_index += 1
                 continue
         answer = generate_classification_answer(question, model, tokenizer)
         # if the answer is NO then abstain
         if answer == "NO":
             final_ret[str_id] = "null"
-            logger.info(f"Sample {str_id}: Classification result is NO, abstaining")
+            logger.warning(f"Sample {str_id}: Classification result is NO, abstaining")
             num_abstain_by_cls += 1
         else:
-            logger.info(f"Sample {str_id}: Getting few-shot examples")
             prompt = get_conversation(question, few_shots=None)
             few_shots = text_sql_retriever.retrieve(question)
             prompt = get_conversation(question, few_shots)
@@ -159,13 +174,13 @@ if __name__ == "__main__":
             final_answer = post_process(answer)
             if is_empty(final_answer):
                 final_ret[str_id] = "null"
-                logger.info(
+                logger.warning(
                     f"Sample {str_id}: Empty answer after post-processing, abstaining"
                 )
                 num_abstain_by_empty_answer += 1
                 continue
 
-            logger.info(f"Sample {str_id}: Handling potential errors")
+            logger.debug(f"Sample {str_id}: Handling potential errors")
             if is_error_flag:
                 final_answer = error_handling(final_answer, reasoning_model, prompt)
 
@@ -173,6 +188,9 @@ if __name__ == "__main__":
             if updated_error_flag and final_answer == "null":
                 num_abstain_by_error_handling += 1
             elif updated_error_flag and final_answer != "null":
+                logger.error(
+                    f"Sample {str_id}: Error detected after handling, but answer is not null"
+                )
                 num_error += 1  # num_error should be 0!
             else:
                 num_success += 1
@@ -190,7 +208,7 @@ if __name__ == "__main__":
     logger.info(f"Abstained by classification: {num_abstain_by_cls}")
     logger.info(f"Abstained by null index similarity: {num_abstain_by_null_index}")
     logger.info(f"Abstained due to empty answers: {num_abstain_by_empty_answer}")
-    logger.info(f"Errors detected: {num_error}")  # This valud should be 0!
+    logger.info(f"Errors detected: {num_error}")  # This value should be 0!
     logger.info(f"Errors handled by fallback: {num_abstain_by_error_handling}")
     logger.info(
         f"Total abstentions: {num_short_questions + num_abstain_by_cls + num_abstain_by_null_index + num_abstain_by_empty_answer + num_abstain_by_error_handling}"

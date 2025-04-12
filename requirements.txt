@@ -61,3 +61,4 @@ sentence-transformers==3.4.1
 faiss-cpu==1.10.0
 opik==1.6.6
 peft==0.15.0
+colorlog
