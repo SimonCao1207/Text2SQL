@@ -5,7 +5,7 @@ import re
 import openai
 from dotenv import load_dotenv
 from openai import OpenAI
-from opik import track
+from opik.integrations.openai import track_openai
 from tqdm import tqdm
 
 from const import FINETUNED_GPT_MINI
@@ -16,7 +16,7 @@ open_ai_key = os.environ.get("OPENAI_API_KEY")
 if open_ai_key is None:
     raise ValueError("Please set the OPENAI_API_KEY environment variable")
 save_api_key(open_ai_key)
-client = OpenAI(api_key=open_ai_key)
+client = track_openai(OpenAI(api_key=open_ai_key))
 
 
 def post_process(answer):
@@ -39,7 +39,6 @@ class Model:
         if not os.path.isfile(target_dir) or openai.api_key == "":
             raise Exception("Error: no API key file found.")
 
-    @track
     def ask_chatgpt(
         self,
         prompt,
