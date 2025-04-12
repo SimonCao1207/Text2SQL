@@ -180,20 +180,20 @@ if __name__ == "__main__":
                 num_abstain_by_empty_answer += 1
                 continue
 
-            logger.debug(f"Sample {str_id}: Handling potential errors")
             if is_error_flag:
+                logger.info(f"Sample {str_id}: Handling potential errors")
                 final_answer = error_handling(final_answer, reasoning_model, prompt)
+                updated_error_flag = is_error(final_answer)
+                if updated_error_flag and final_answer == "null":
+                    num_abstain_by_error_handling += 1
+                elif updated_error_flag and final_answer != "null":
+                    logger.error(
+                        f"Sample {str_id}: Error detected after handling, but answer is not null"
+                    )
+                    num_error += 1  # num_error should be 0!
+                else:
+                    num_success += 1
 
-            updated_error_flag = is_error(final_answer)
-            if updated_error_flag and final_answer == "null":
-                num_abstain_by_error_handling += 1
-            elif updated_error_flag and final_answer != "null":
-                logger.error(
-                    f"Sample {str_id}: Error detected after handling, but answer is not null"
-                )
-                num_error += 1  # num_error should be 0!
-            else:
-                num_success += 1
             final_ret[str_id] = final_answer
 
         # Save checkpoint at regular intervals
