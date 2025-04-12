@@ -194,7 +194,7 @@ if __name__ == "__main__":
                 else:
                     num_success += 1
 
-            final_ret[str_id] = final_answer
+            final_ret[str_id] = post_process(final_answer)
 
         # Save checkpoint at regular intervals
         if (i + 1) % checkpoint_interval == 0:
