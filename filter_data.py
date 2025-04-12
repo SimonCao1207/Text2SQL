@@ -30,7 +30,7 @@ def execute(db_id: str, sql: str, is_gold_sql: bool, timeout: int = 60):
                 func=execute_sql_for_evaluator,
                 args=(
                     processed_sql,
-                    "EHRSQL_data/mimic_iv/mimic_iv.sqlite",
+                    "database/mimic_iv/mimic_iv.sqlite",
                 ),
             )
             execution_result = process_answer(execution_result, db_id=db_id)
@@ -45,6 +45,8 @@ def execute(db_id: str, sql: str, is_gold_sql: bool, timeout: int = 60):
 
 def is_error(sql):
     result = execute("mimic_iv", sql, False, timeout=60)
+    if not result:
+        return True
     match = re.search(r"\[Error\]", result)
     return match
 
