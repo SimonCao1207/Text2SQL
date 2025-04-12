@@ -59,7 +59,9 @@ def error_handling(answer, model, prompt, max_attempt=3):
     for _ in range(max_attempt):
         answer = model.ask_chatgpt(prompt)
         if not is_error(answer):
+            logger.info("\t[Error_handling] Success!")
             return answer
+        logger.info("\t[Error_handling] Failed!")
     return "null"
 
 
@@ -108,6 +110,14 @@ if __name__ == "__main__":
     final_ret = {}
     checkpoint_interval = max(1, len(data) // 10)  # Save 10 checkpoints
 
+    num_short_questions = 0
+    num_abstain_by_cls = 0
+    num_abstain_by_null_index = 0
+    num_abstain_by_empty_answer = 0
+    num_error = 0
+    num_abstain_by_error_handling = 0
+    num_success = 0
+
     for i, sample in enumerate(tqdm(data, desc="Processing samples", total=len(data))):
         str_id, question = sample["id"], sample["question"]
         logger.info(f"Processing sample {i + 1}/{len(data)}, ID: {str_id}")
@@ -115,6 +125,7 @@ if __name__ == "__main__":
         if is_short_question(question):
             final_ret[str_id] = "null"  # Abstain
             logger.info(f"Sample {str_id}: Short question detected, abstaining")
+            num_short_questions += 1
             continue
 
         results = null_retriever.retrieve(question)
@@ -126,12 +137,14 @@ if __name__ == "__main__":
             if distance <= null_thres:
                 final_ret[str_id] = "null"  # Abstain
                 logger.info(f"Sample {str_id}: Distance below threshold, abstaining")
+                num_abstain_by_null_index += 1
                 continue
         answer = generate_classification_answer(question, model, tokenizer)
         # if the answer is NO then abstain
         if answer == "NO":
             final_ret[str_id] = "null"
             logger.info(f"Sample {str_id}: Classification result is NO, abstaining")
+            num_abstain_by_cls += 1
         else:
             logger.info(f"Sample {str_id}: Getting few-shot examples")
             prompt = get_conversation(question, few_shots=None)
@@ -140,27 +153,48 @@ if __name__ == "__main__":
 
             logger.info(f"Sample {str_id}: Generating answer with GPT-4o model")
             answer = gpt_model.ask_chatgpt(prompt)
+            is_error_flag = is_error(answer)
 
             # Handle errors and post-process the answer
-            answer = post_process(answer)
-            if is_empty(answer):
+            final_answer = post_process(answer)
+            if is_empty(final_answer):
                 final_ret[str_id] = "null"
                 logger.info(
                     f"Sample {str_id}: Empty answer after post-processing, abstaining"
                 )
+                num_abstain_by_empty_answer += 1
                 continue
 
             logger.info(f"Sample {str_id}: Handling potential errors")
-            final_answer = error_handling(answer, reasoning_model, prompt)
+            if is_error_flag:
+                final_answer = error_handling(final_answer, reasoning_model, prompt)
+
+            updated_error_flag = is_error(final_answer)
+            if updated_error_flag and final_answer == "null":
+                num_abstain_by_error_handling += 1
+            elif updated_error_flag and final_answer != "null":
+                num_error += 1  # num_error should be 0!
+            else:
+                num_success += 1
             final_ret[str_id] = final_answer
-            logger.info(f"Sample {str_id}: Final answer length: {len(final_answer)}")
 
         # Save checkpoint at regular intervals
         if (i + 1) % checkpoint_interval == 0:
             checkpoint_file = save_checkpoint(final_ret, i + 1)
-            # Submit intermediate results
-            submit(final_ret)
-            logger.info(f"Intermediate submission made at sample {i + 1}/{len(data)}")
+
+    # Log final statistics
+    logger.info("=== Statistics Summary ===")
+    logger.info(f"Total samples processed: {len(data)}")
+    logger.info(f"Total Success: {num_success}")
+    logger.info(f"Short questions (abstained): {num_short_questions}")
+    logger.info(f"Abstained by classification: {num_abstain_by_cls}")
+    logger.info(f"Abstained by null index similarity: {num_abstain_by_null_index}")
+    logger.info(f"Abstained due to empty answers: {num_abstain_by_empty_answer}")
+    logger.info(f"Errors detected: {num_error}")  # This valud should be 0!
+    logger.info(f"Errors handled by fallback: {num_abstain_by_error_handling}")
+    logger.info(
+        f"Total abstentions: {num_short_questions + num_abstain_by_cls + num_abstain_by_null_index + num_abstain_by_empty_answer + num_abstain_by_error_handling}"
+    )
 
     logger.info("Processing complete, submitting final results")
     submit(final_ret)
