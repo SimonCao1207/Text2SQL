@@ -28,7 +28,7 @@ def error_handling(answer, model, prompt, max_attempt=3):
     if not is_error(answer):
         return answer
     for _ in range(max_attempt):
-        answer, _ = model.ask_chatgpt(prompt)
+        answer = model.ask_chatgpt(prompt)
         if not is_error(answer):
             return answer
     return "null"
@@ -91,12 +91,14 @@ if __name__ == "__main__":
         else:
             few_shots = text_sql_retriever.retrieve(question)
             prompt = get_conversation(question, few_shots)
-            answer, _ = gpt_model.ask_chatgpt(prompt)
+            answer = gpt_model.ask_chatgpt(prompt)
 
             # Handle errors and post-process the answer
             answer = post_process(answer)
             if is_empty(answer):
                 final_ret[str_id] = "null"
+                continue
+
             final_answer = error_handling(answer, reasoning_model, prompt)
             final_ret[str_id] = final_answer
 

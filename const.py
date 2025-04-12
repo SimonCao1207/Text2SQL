@@ -45,7 +45,7 @@ PROMPT_CLASSIFICATION = "prompt_classification.md"
 
 # Model paths
 PRETRAINED_MODEL_PATH = "defog/sqlcoder-7b-2"
-LORA_PATH = "outputs/second_run/checkpoint-4800"
+LORA_PATH = "outputs/merged_run/checkpoint-6400"
 
 # Model name
 FINETUNED_GPT_MINI = "ft:gpt-4o-mini-2024-07-18:personal::B7xHlv2W"

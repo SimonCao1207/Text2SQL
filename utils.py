@@ -214,8 +214,8 @@ def generate_classification_answer(question, model, tokenizer):
             input_ids=prompt_tokenized.to("cuda"),
             attention_mask=torch.ones_like(prompt_tokenized).to("cuda"),
             max_new_tokens=10,
-            # do_sample=False,
-            # num_beams=5,
+            do_sample=False,
+           #  num_beams=5,
             pad_token_id=tokenizer.eos_token_id,
         )
     answer = tokenizer.decode(

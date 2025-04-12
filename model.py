@@ -43,19 +43,12 @@ class Model:
     def ask_chatgpt(
         self,
         prompt,
-        temperature=0.6,
     ):
         response = client.chat.completions.create(
             model=self.model,
-            temperature=temperature,
             messages=prompt,
-            logprobs=True,
-            top_logprobs=5,
         )
-        return (
-            response.choices[0].message.content,
-            response.choices[0].logprobs.content,  # type: ignore
-        )
+        return response.choices[0].message.content
 
     def generate(self, input_data):
         """
@@ -67,11 +60,9 @@ class Model:
         """
 
         labels = {}
-        logprobs = {}
 
         for sample in tqdm(input_data):
             answer = self.ask_chatgpt(sample["input"])
             labels[sample["id"]] = post_process(answer[0])
-            logprobs[sample["id"]] = answer[1]
 
-        return labels, logprobs
+        return labels
