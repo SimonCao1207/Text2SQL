@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 def save_checkpoint(data, iteration):
     """Save checkpoint of current progress."""
-    checkpoint_dir = "./checkpoints"
+    checkpoint_dir = "./results"
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
 
