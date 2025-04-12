@@ -1,4 +1,9 @@
+import json
+import logging
 import os  # Add this import
+import time
+
+from tqdm import tqdm
 
 from baseline import get_conversation
 from const import (
@@ -16,6 +21,30 @@ from filter_data import is_empty, is_error
 from model import Model, post_process
 from retrieve import Retriever, VectorDB
 from utils import generate_classification_answer, get_tokenizer_model, load_data, submit
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[logging.FileHandler("process.log"), logging.StreamHandler()],
+)
+logger = logging.getLogger(__name__)
+
+
+def save_checkpoint(data, iteration):
+    """Save checkpoint of current progress."""
+    checkpoint_dir = "./checkpoints"
+    if not os.path.exists(checkpoint_dir):
+        os.makedirs(checkpoint_dir)
+
+    timestamp = time.strftime("%Y%m%d-%H%M%S")
+    filename = f"{checkpoint_dir}/checkpoint_{iteration}_{timestamp}.json"
+
+    with open(filename, "w") as f:
+        json.dump(data, f)
+
+    logger.info(f"Checkpoint saved: {filename}")
+    return filename
 
 
 def is_short_question(question):
@@ -43,12 +72,15 @@ def initialize_vector_db(dataset_path, index_path, model_name):
 
 
 if __name__ == "__main__":
+    logger.info("Starting the evaluation process...")
     test_data, _ = load_data(TEST_DATA_PATH, None, is_test=True)
     data = test_data["data"]
+    logger.info(f"Loaded {len(data)} test samples")
 
     if not os.path.exists("./data/index"):
         os.makedirs("./data/index")
 
+    logger.info("Initializing vector databases...")
     null_vector_db = initialize_vector_db(
         dataset_path=NULL_QUESTION_DATA_PATH,
         index_path=NULL_QUESTION_INDEX_PATH,
@@ -61,7 +93,9 @@ if __name__ == "__main__":
     )
     null_retriever = Retriever(null_vector_db)
     text_sql_retriever = Retriever(text_sql_vector_db)
+    logger.info("Vector databases initialized successfully")
 
+    logger.info("Loading models...")
     gpt_mini_model = Model(model=FINETUNED_GPT_MINI)
     gpt_model = Model(model=GPT_4o)
     reasoning_model = Model(model=O3_MINI_GPT)
@@ -69,37 +103,65 @@ if __name__ == "__main__":
     # classification model and tokenizer
     model, tokenizer = get_tokenizer_model()
     model.eval()
+    logger.info("Models loaded successfully")
 
     final_ret = {}
-    for sample in data:
+    checkpoint_interval = max(1, len(data) // 10)  # Save 10 checkpoints
+
+    for i, sample in enumerate(tqdm(data, desc="Processing samples", total=len(data))):
         str_id, question = sample["id"], sample["question"]
+        logger.info(f"Processing sample {i + 1}/{len(data)}, ID: {str_id}")
 
         if is_short_question(question):
             final_ret[str_id] = "null"  # Abstain
+            logger.info(f"Sample {str_id}: Short question detected, abstaining")
             continue
 
         results = null_retriever.retrieve(question)
         if results:
             most_similar_question, distance = results[0]
+            logger.info(
+                f"Sample {str_id}: Similar null question found, distance: {distance}"
+            )
             if distance <= null_thres:
                 final_ret[str_id] = "null"  # Abstain
+                logger.info(f"Sample {str_id}: Distance below threshold, abstaining")
                 continue
         answer = generate_classification_answer(question, model, tokenizer)
         # if the answer is NO then abstain
         if answer == "NO":
             final_ret[str_id] = "null"
+            logger.info(f"Sample {str_id}: Classification result is NO, abstaining")
         else:
+            logger.info(f"Sample {str_id}: Getting few-shot examples")
+            prompt = get_conversation(question, few_shots=None)
             few_shots = text_sql_retriever.retrieve(question)
             prompt = get_conversation(question, few_shots)
+
+            logger.info(f"Sample {str_id}: Generating answer with GPT-4o model")
             answer = gpt_model.ask_chatgpt(prompt)
 
             # Handle errors and post-process the answer
             answer = post_process(answer)
             if is_empty(answer):
                 final_ret[str_id] = "null"
+                logger.info(
+                    f"Sample {str_id}: Empty answer after post-processing, abstaining"
+                )
                 continue
 
+            logger.info(f"Sample {str_id}: Handling potential errors")
             final_answer = error_handling(answer, reasoning_model, prompt)
             final_ret[str_id] = final_answer
+            logger.info(f"Sample {str_id}: Final answer length: {len(final_answer)}")
 
+        # Save checkpoint at regular intervals
+        if (i + 1) % checkpoint_interval == 0:
+            checkpoint_file = save_checkpoint(final_ret, i + 1)
+            # Submit intermediate results
+            submit(final_ret)
+            logger.info(f"Intermediate submission made at sample {i + 1}/{len(data)}")
+
+    logger.info("Processing complete, submitting final results")
     submit(final_ret)
+    logger.info("Final results submitted")

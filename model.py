@@ -56,7 +56,6 @@ class Model:
             input_data: list of python dictionaries containing 'id' and 'input'
         Returns:
             labels: python dictionary containing sql prediction or 'null' values associated with ids
-            logprobs : python dictionary containing logprobs associated with ids
         """
 
         labels = {}
