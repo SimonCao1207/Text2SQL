@@ -1,17 +1,12 @@
-# AI612-Project-1
+# Text-to-SQL for Healthcare
 
-## Current pipeline
-```
+## Dataset
+- In `/data` and `/database` folder
+
+## Run pipeline
+```console
 python run.py
 ```
-- Abstain Stage
-
-![Process Diagram](assets/abstain_stage.svg)
-
-
-- Pipeline
-
-![Process Diagram](assets/RAG.svg)
 
 # Set up
 
@@ -33,9 +28,18 @@ python baseline.py
 
 - Finetune basemodel gpt-4o mini on EHRSQL train dataset with `llm_finetune.ipynb`
 
+## Method
+- Abstain Stage
+
+![Process Diagram](assets/abstain_stage.svg)
+
+
+- Pipeline
+
+![Process Diagram](assets/RAG.svg)
+
 ## Evaluation
 - Run evaluation on valid dataset: 
-```
+```console
 python evaluate.py
 ```
-
