@@ -1,4 +1,5 @@
 # Text-to-SQL for Healthcare
+[Diagrams dump](https://drive.google.com/file/d/1phnmvAqt_QZ-VTkyiYcZlBDaKGhLO-6D/view?usp=sharing)
 
 ## Dataset
 - In `/data` and `/database` folder
@@ -28,18 +29,10 @@ python baseline.py
 
 - Finetune basemodel gpt-4o mini on EHRSQL train dataset with `llm_finetune.ipynb`
 
-## Method
-- Abstain Stage
-
-![Process Diagram](assets/abstain_stage.svg)
-
-
-- Pipeline
-
-![Process Diagram](assets/RAG.svg)
-
 ## Evaluation
 - Run evaluation on valid dataset: 
 ```console
 python evaluate.py
 ```
+
+
